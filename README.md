@@ -3,7 +3,13 @@
 เครื่องมือจัดตารางเวรรายเดือน — ไฟล์ HTML เดียว ไม่ต้องติดตั้งอะไร ไม่ต้องมี server
 
 ## วิธีใช้
-**ลิงก์เว็บ (แชร์ให้คนอื่นได้):** https://claude.ai/code/artifact/2e3feb7d-092f-478f-938f-feabca1c4169
+**🌐 ลิงก์สาธารณะ — ส่งให้ใครก็เปิดได้ ไม่ต้องล็อกอิน:**
+https://phoomsriburanasorn.github.io/duty-roster/
+
+> อัปเดตเว็บ = `git push` ขึ้น GitHub แล้วรอ ~1 นาที (GitHub Pages เสิร์ฟ `index.html` ที่ root ตรง ๆ)
+
+ลิงก์ artifact (เฉพาะคนที่ล็อกอิน Claude และอยู่ทีมเดียวกัน):
+https://claude.ai/code/artifact/2e3feb7d-092f-478f-938f-feabca1c4169
 
 หรือเปิด `index.html` ด้วยเบราว์เซอร์ในเครื่อง / เสิร์ฟผ่าน launch.json:
 
