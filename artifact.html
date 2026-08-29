@@ -1,5 +1,5 @@
 <title>ระบบจัดตารางเวร</title>
-<style>
+<style id="css">
 :root{
   --bg:#f6f7f9; --panel:#fff; --panel2:#fbfbfc; --head:#fafbfc; --hover:#f2f4f6;
   --ink:#1b1f24; --muted:#6b7280; --dim:#b7bcc3; --soft-ink:#3c4249;
@@ -170,6 +170,7 @@ header{background:var(--panel);border-bottom:1px solid var(--line);position:stic
     </div>
     <span class="hint" id="saveInfo"></span>
     <div class="sp"></div>
+    <button onclick="sharePrompt()">📤 ส่งต่อให้คนอื่น</button>
     <button class="ghost" onclick="backup()">⤓ สำรอง</button>
     <button class="ghost" onclick="document.getElementById('restoreFile').click()">⤒ กู้คืนจากไฟล์</button>
     <button class="ghost" onclick="restorePaste()">📋 กู้คืนจากข้อความ</button>
@@ -181,7 +182,7 @@ header{background:var(--panel);border-bottom:1px solid var(--line);position:stic
 <div class="wrap" id="view"></div>
 <div id="modalHost"></div>
 
-<script>
+<script id="app">
 /* =====================================================================
    ระบบจัดตารางเวร — ไฟล์เดียว, เก็บใน localStorage
    ===================================================================== */
@@ -236,9 +237,18 @@ function tg(eid){
   return t;
 }
 
+/* ไฟล์ที่ถูก "ส่งต่อ" มาจะมีการตั้งค่าฝังอยู่ใน window.__SEED__
+   — ถ้าเครื่องนี้ยังไม่มีข้อมูลของตัวเอง ใช้ของที่ส่งมาเลย
+   — ถ้ามีข้อมูลอยู่แล้ว ห้ามทับเงียบ ๆ ให้ขึ้นแถบถามก่อน */
+let SEED_PENDING = false;
 function load(){
-  try{ const raw = localStorage.getItem(LS_KEY); DB = raw ? JSON.parse(raw) : blankDB(); }
+  let raw = null;
+  try{ raw = localStorage.getItem(LS_KEY); DB = raw ? JSON.parse(raw) : blankDB(); }
   catch(e){ DB = blankDB(); STORAGE_OK=false; }
+  if(window.__SEED__ && window.__SEED__.employees){
+    if(!raw) DB = window.__SEED__;
+    else SEED_PENDING = true;
+  }
   if(!DB.months) DB.months = {};
   if(!DB.activeMonth){ const n=new Date(); DB.activeMonth = monthKey(n.getFullYear(), n.getMonth()+2); }
   ensureMonth(DB.activeMonth); MONTH = DB.months[DB.activeMonth];
@@ -903,7 +913,17 @@ function render(){
   document.getElementById('mLabel').textContent = monthLabel(DB.activeMonth);
   document.getElementById('tabs').innerHTML = TABS.map(t=>
     `<button class="${TAB===t.id?'on':''}" onclick="TAB='${t.id}';render()"><i>${t.n}</i>${t.label}</button>`).join('');
-  document.getElementById('view').innerHTML =
+  const banner = SEED_PENDING ? `
+    <div class="card" style="border-color:var(--brand-line);background:var(--brand-soft);margin-top:14px">
+      <div class="bd row">
+        <b>📥 ไฟล์นี้มีการตั้งค่าที่ถูกส่งต่อมา</b>
+        <span class="hint">แต่เครื่องนี้มีข้อมูลของตัวเองอยู่แล้ว — เลือกว่าจะใช้อันไหน</span>
+        <div style="flex:1"></div>
+        <button class="ghost" onclick="backup()">⤓ สำรองของเดิมก่อน</button>
+        <button class="primary" onclick="acceptSeed()">ใช้การตั้งค่าที่ส่งมา</button>
+        <button class="ghost" onclick="dismissSeed()">ใช้ของเดิมต่อ</button>
+      </div></div>` : '';
+  document.getElementById('view').innerHTML = banner +
     ({sched:viewSched,month:viewMonth,quota:viewQuota,cond:viewCond,team:viewTeam})[TAB]();
   if(TAB==='sched') wireSched();
   save();
@@ -1477,6 +1497,64 @@ function exportCSV(){
   download('ตารางเวร_'+MONTH.key+'.csv', csv, 'text/csv;charset=utf-8');
 }
 function backup(){ download('duty-roster-'+new Date().toISOString().slice(0,10)+'.json', JSON.stringify(DB,null,1),'application/json'); }
+
+/* ---------- ส่งต่อให้คนอื่น: ไฟล์ HTML เดียวที่มีทั้งโปรแกรมและข้อมูล ----------
+   ประกอบไฟล์ใหม่จากชิ้นส่วนของหน้านี้เอง (style + script + โครง header)
+   ไม่ได้ก๊อป DOM ทั้งดุ้น เพราะถ้าเปิดผ่านลิงก์เว็บจะติดสคริปต์ของแพลตฟอร์มมาด้วย */
+function buildPortable(includeSchedule){
+  const data = JSON.parse(JSON.stringify(DB));
+  if(!includeSchedule) Object.values(data.months).forEach(m=>{
+    m.schedule=null; m.lastRun=null; m.locks={}; });
+
+  const hdr = document.querySelector('header').cloneNode(true);
+  hdr.querySelector('#mLabel').textContent = '—';
+  hdr.querySelector('#saveInfo').textContent = '';
+  hdr.querySelector('#tabs').innerHTML = '';
+
+  const css = document.getElementById('css').outerHTML;
+  const app = document.getElementById('app').textContent;
+  return '<!DOCTYPE html>\n<html lang="th">\n<head>\n<meta charset="utf-8">\n'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+    + '<title>ระบบจัดตารางเวร</title>\n' + css + '\n</head>\n<body>\n'
+    + hdr.outerHTML + '\n<div class="wrap" id="view"></div>\n<div id="modalHost"></div>\n'
+    + '<script>window.__SEED__=' + JSON.stringify(data) + ';<\/script>\n'
+    + '<script id="app">' + app + '<\/script>\n</body>\n</html>\n';
+}
+function sharePrompt(){
+  const hasSched = !!MONTH.schedule;
+  document.getElementById('modalHost').innerHTML = `
+  <div class="mask" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <div class="mh"><h3>📤 ส่งต่อให้คนอื่น</h3><button class="ghost" onclick="closeModal()">✕</button></div>
+    <div class="mb" style="padding:14px 16px">
+      <div class="note" style="margin-bottom:12px">ได้ไฟล์ <b>.html ไฟล์เดียว</b> ที่มีทั้งโปรแกรมและการตั้งค่าอยู่ในตัว —
+        ส่งทาง LINE/อีเมลได้เลย ผู้รับดับเบิลคลิกเปิดแล้วใช้ต่อได้ทันที
+        <b>ไม่ต้องติดตั้ง ไม่ต้องล็อกอิน ไม่ต้องกู้คืนอะไร</b></div>
+      <div style="display:grid;gap:9px">
+        <button onclick="doShare(false)" style="text-align:left;padding:11px 13px">
+          <b>เฉพาะการตั้งค่า</b><br>
+          <span class="hint">รายชื่อ ตำแหน่ง ห้อง โควตา วันไม่ว่าง คู่ห้าม — แต่ยังไม่มีตารางเวร
+          ให้เขากดจัดเอง</span></button>
+        <button onclick="doShare(true)" style="text-align:left;padding:11px 13px" ${hasSched?'':'disabled'}>
+          <b>ทั้งหมด รวมตารางที่จัดแล้ว</b><br>
+          <span class="hint">${hasSched?'เขาเปิดมาเห็นตารางเดือนนี้เหมือนที่คุณเห็นทุกช่อง'
+            :'ยังไม่มีตารางในเดือนนี้ — กดจัดก่อน'}</span></button>
+      </div>
+      <div class="note warn" style="margin-top:12px">หลังส่งไปแล้ว <b>ข้อมูลของสองเครื่องแยกกันเดินต่อ</b> —
+        เขาแก้ฝั่งเขาไม่มีผลกับคุณ ถ้าจะให้ตรงกันอีกครั้งต้องส่งไฟล์ใหม่</div>
+    </div></div></div>`;
+}
+function doShare(withSchedule){
+  const html = buildPortable(withSchedule);
+  const tag = withSchedule ? 'พร้อมตาราง_'+MONTH.key : 'ตั้งค่า';
+  closeModal();
+  download('ตารางเวร_'+tag+'.html', html, 'text/html;charset=utf-8');
+}
+function acceptSeed(){
+  if(!confirm('ใช้การตั้งค่าที่ส่งมากับไฟล์นี้ แทนข้อมูลที่มีอยู่ในเครื่อง?\n\nข้อมูลเดิมจะถูกทับ — ถ้ายังไม่ได้สำรอง ให้กดยกเลิกแล้วกด “สำรอง” ก่อน')) return;
+  DB = window.__SEED__; ensureMonth(DB.activeMonth); MONTH = DB.months[DB.activeMonth];
+  SEED_PENDING = false; save(); render();
+}
+function dismissSeed(){ SEED_PENDING = false; render(); }
 function applyRestore(txt){
   try{ const o=JSON.parse(txt);
     if(!o.employees||!o.months) throw new Error('ไม่ใช่ไฟล์สำรองของระบบนี้');
