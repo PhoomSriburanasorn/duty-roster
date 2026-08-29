@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ระบบจัดตารางเวร</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#fff; --ink:#1b1f24; --muted:#6b7280; --line:#e3e6ea;
+  --brand:#2f6f6b; --brand-soft:#e6f2f1; --warn:#b45309; --warn-soft:#fef3c7;
+  --bad:#b91c1c; --bad-soft:#fee2e2; --ok:#15803d; --ok-soft:#dcfce7;
+  --radius:10px; --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans Thai","Sarabun",sans-serif;
+  font-size:14px;line-height:1.5}
+h1,h2,h3{margin:0;font-weight:650}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);
+  background:#fff;padding:6px 12px;color:var(--ink)}
+button:hover{background:#f2f4f6}
+button.primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+button.primary:hover{filter:brightness(1.08)}
+button.ghost{border-color:transparent;background:transparent;padding:4px 8px}
+button.ghost:hover{background:#eceff2}
+button.danger{color:var(--bad);border-color:#f0c8c8}
+button.danger:hover{background:var(--bad-soft)}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink)}
+input[type=number]{width:74px}
+input:focus,select:focus{outline:2px solid var(--brand-soft);border-color:var(--brand)}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:12px;color:var(--muted);font-weight:600;text-transform:none;background:#fafbfc}
+.wrap{max-width:1240px;margin:0 auto;padding:0 18px 60px}
+
+/* header */
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+.hd{max-width:1240px;margin:0 auto;padding:11px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.hd h1{font-size:17px;letter-spacing:-.2px}
+.hd .sp{flex:1}
+.monthpick{display:flex;align-items:center;gap:6px;background:var(--brand-soft);
+  border:1px solid #cfe3e1;border-radius:9px;padding:3px 5px}
+.monthpick b{font-size:14px;color:#1f4f4c;min-width:118px;text-align:center}
+.tabs{max-width:1240px;margin:0 auto;padding:0 18px;display:flex;gap:2px}
+.tabs button{border:0;border-bottom:2px solid transparent;background:transparent;border-radius:0;
+  padding:9px 14px;color:var(--muted);font-weight:600}
+.tabs button.on{color:var(--brand);border-bottom-color:var(--brand)}
+.tabs button:hover{background:#f2f4f6}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);margin-top:16px}
+.card>.hdr{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card>.hdr h2{font-size:14px}
+.card>.hdr .sp{flex:1}
+.card>.bd{padding:14px 16px}
+.card>.bd.flush{padding:0}
+.hint{color:var(--muted);font-size:12.5px}
+.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:1px 9px;
+  font-size:12px;font-weight:600;border:1px solid transparent}
+.tag{display:inline-block;width:9px;height:9px;border-radius:3px;flex:none}
+.empty{color:var(--muted);padding:22px;text-align:center;font-size:13px}
+
+/* calendar of working days */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;max-width:470px}
+.cal .dow{font-size:11px;color:var(--muted);text-align:center;padding-bottom:2px;font-weight:600}
+.cal .d{aspect-ratio:1/1;border:1px solid var(--line);border-radius:7px;display:flex;
+  align-items:center;justify-content:center;font-size:13px;cursor:pointer;background:#fff;user-select:none}
+.cal .d.off{background:#f1f2f4;color:#b7bcc3;text-decoration:line-through}
+.cal .d.on{background:var(--brand-soft);border-color:#bcd9d6;color:#1f4f4c;font-weight:600}
+.cal .d.leave{background:var(--bad-soft);border-color:#f2c2c2;color:#9b1c1c;font-weight:700;text-decoration:none}
+.cal .d.blank{border:0;background:transparent;cursor:default}
+.cal .d.we{border-style:dashed}
+
+/* schedule grid */
+.sched{width:100%;border-collapse:separate;border-spacing:0}
+.sched th{position:sticky;top:52px;background:#fafbfc;z-index:5;border-bottom:1px solid var(--line)}
+.sched td{border-bottom:1px solid var(--line);padding:4px 6px;vertical-align:top}
+.sched td.day{white-space:nowrap;font-size:12.5px;width:96px;color:var(--muted);padding-top:9px}
+.sched td.day b{color:var(--ink);font-size:14px;margin-right:4px}
+.sched tr.we td.day{color:#9a6a00}
+.slotbox{display:flex;flex-direction:column;gap:4px;min-width:130px}
+.slot{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:7px;
+  padding:3px 6px;background:#fff;cursor:pointer;min-height:29px}
+.slot:hover{border-color:var(--brand);background:#fbfdfd}
+.slot.empty{border-style:dashed;color:var(--muted);justify-content:center;font-size:12px}
+.slot.bad{background:var(--bad-soft);border-color:#f0b4b4}
+.slot.warn{background:var(--warn-soft);border-color:#f0d59a}
+.slot.locked{box-shadow:inset 3px 0 0 var(--brand)}
+.slot .nm{flex:1;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot .lk{opacity:.35;font-size:11px}
+.slot.locked .lk{opacity:1}
+.slot.drag{opacity:.4}
+.slot.over{outline:2px solid var(--brand);outline-offset:1px}
+
+/* modal */
+.mask{position:fixed;inset:0;background:rgba(16,24,40,.42);display:flex;align-items:center;
+  justify-content:center;z-index:60;padding:20px}
+.modal{background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:82vh;
+  display:flex;flex-direction:column;box-shadow:0 18px 40px rgba(16,24,40,.22)}
+.modal .mh{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.modal .mh h3{font-size:15px;flex:1}
+.modal .mb{padding:8px 0;overflow:auto}
+.opt{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;border-left:3px solid transparent}
+.opt:hover{background:#f4f6f7}
+.opt.cur{background:var(--brand-soft);border-left-color:var(--brand)}
+.opt .why{font-size:11.5px;color:var(--bad)}
+.opt.blocked .nm{color:var(--muted)}
+.opt .cnt{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.bar{height:7px;border-radius:4px;background:#eceff2;overflow:hidden;min-width:70px}
+.bar>i{display:block;height:100%;background:var(--brand)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:1px 9px;font-size:12px;background:#fff}
+.chip.del{cursor:pointer}
+.chip.del:hover{background:var(--bad-soft);border-color:#f0b4b4}
+.note{background:#fbfbfc;border:1px solid var(--line);border-left:3px solid var(--brand);
+  border-radius:6px;padding:9px 12px;font-size:12.5px;color:#3c4249}
+.stat{display:flex;gap:18px;flex-wrap:wrap}
+.stat>div{min-width:96px}
+.stat b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.stat span{font-size:11.5px;color:var(--muted)}
+.vio{font-size:12.5px;padding:5px 0;border-bottom:1px dashed var(--line)}
+.vio b{color:var(--bad)}
+.vio.soft b{color:var(--warn)}
+@media print{
+  header,.tabs,.noprint{display:none!important}
+  body{background:#fff}.card{box-shadow:none;border:0}
+  .sched th{position:static}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd">
+    <h1>🗓️ ระบบจัดตารางเวร</h1>
+    <div class="monthpick">
+      <button class="ghost" onclick="shiftMonth(-1)">◀</button>
+      <b id="mLabel">—</b>
+      <button class="ghost" onclick="shiftMonth(1)">▶</button>
+    </div>
+    <span class="hint" id="saveInfo"></span>
+    <div class="sp"></div>
+    <button class="ghost" onclick="backup()">⤓ สำรองข้อมูล</button>
+    <button class="ghost" onclick="document.getElementById('restoreFile').click()">⤒ กู้คืน</button>
+    <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restore(this)">
+  </div>
+  <div class="tabs" id="tabs"></div>
+</header>
+
+<div class="wrap" id="view"></div>
+
+<div id="modalHost"></div>
+
+<script>
+/* ============================================================
+   ระบบจัดตารางเวร — single-file, เก็บข้อมูลใน localStorage
+   ============================================================ */
+
+const LS_KEY = 'dutyRoster.v1';
+const uid = () => Math.random().toString(36).slice(2,9);
+const TH_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                   'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const TH_DOW = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+const PALETTE = ['#2f6f6b','#b45309','#5b21b6','#0e7490','#9d174d','#166534','#7c2d12','#1e40af'];
+
+/* ---------- state ---------- */
+let DB, TAB = 'sched', MONTH;
+
+function blankDB(){
+  const p1=uid(), p2=uid();
+  return {
+    positions:[
+      {id:p1,name:'Senior',color:PALETTE[0],maxPerRoom:1},
+      {id:p2,name:'Junior',color:PALETTE[1],maxPerRoom:null},
+    ],
+    employees:[],
+    defaultRooms:[{id:uid(),name:'ห้อง 1',size:2},{id:uid(),name:'ห้อง 2',size:1},{id:uid(),name:'ห้อง 3',size:1}],
+    pairRules:[],           // กฎยืนพื้น ใช้ทุกเดือน
+    months:{},
+    activeMonth:null
+  };
+}
+function blankMonth(key){
+  const [y,m] = key.split('-').map(Number);
+  const days = new Date(y,m,0).getDate();
+  const workDays = {};
+  for(let d=1; d<=days; d++){
+    const dow = new Date(y,m-1,d).getDay();
+    workDays[d] = (dow!==0 && dow!==6);      // ค่าเริ่มต้น: จันทร์–ศุกร์
+  }
+  return {
+    key, workDays,
+    rooms: DB.defaultRooms.map(r=>({id:r.id,name:r.name,size:r.size})),
+    leaves:{},              // empId -> [วันที่(number)]
+    pairRules:[],           // กฎเฉพาะเดือนนี้
+    caps:{},                // empId -> เวรสูงสุดเดือนนี้
+    soft:{
+      even:   {on:true,  w:6},
+      noB2B:  {on:true,  w:4, hard:false},
+      spacing:{on:false, w:2, gap:2},
+      roomVar:{on:true,  w:2},
+      pairVar:{on:true,  w:2}
+    },
+    locks:{},               // "d|roomId|idx" -> empId
+    schedule:null,          // { d: { roomId:[empId|null,...] } }
+    lastRun:null
+  };
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    DB = raw ? JSON.parse(raw) : blankDB();
+  }catch(e){ DB = blankDB(); STORAGE_OK = false; }
+  if(!DB.months) DB.months = {};
+  const now = new Date();
+  const nextKey = monthKey(now.getFullYear(), now.getMonth()+2);   // เดือนถัดไป
+  if(!DB.activeMonth) DB.activeMonth = nextKey;
+  ensureMonth(DB.activeMonth);
+  MONTH = DB.months[DB.activeMonth];
+}
+let STORAGE_OK = true;
+function save(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }
+  catch(e){ STORAGE_OK = false; }
+  const el = document.getElementById('saveInfo');
+  if(el){
+    el.textContent = STORAGE_OK
+      ? 'บันทึกแล้ว ' + new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})
+      : '⚠️ เบราว์เซอร์ไม่ให้เก็บข้อมูล — ใช้ปุ่ม “สำรองข้อมูล” ก่อนปิดหน้า';
+    el.style.color = STORAGE_OK ? '' : 'var(--bad)';
+  }
+}
+function ensureMonth(key){ if(!DB.months[key]) DB.months[key] = blankMonth(key); }
+function monthKey(y,m){ // m = 1..12 (รับค่าเกิน/ต่ำได้)
+  const d = new Date(y, m-1, 1);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+function shiftMonth(n){
+  const [y,m] = DB.activeMonth.split('-').map(Number);
+  const key = monthKey(y, m+n);
+  DB.activeMonth = key; ensureMonth(key); MONTH = DB.months[key];
+  save(); render();
+}
+
+/* ---------- helpers ---------- */
+const emps      = () => DB.employees.filter(e=>e.active!==false);
+const empById   = id => DB.employees.find(e=>e.id===id);
+const posById   = id => DB.positions.find(p=>p.id===id);
+const posName   = id => (posById(id)||{}).name || '—';
+const posColor  = id => (posById(id)||{}).color || '#94a3b8';
+const daysInMonth = () => { const [y,m]=MONTH.key.split('-').map(Number); return new Date(y,m,0).getDate(); };
+const dowOf = d => { const [y,m]=MONTH.key.split('-').map(Number); return new Date(y,m-1,d).getDay(); };
+const workDayList = () => { const out=[]; for(let d=1; d<=daysInMonth(); d++) if(MONTH.workDays[d]) out.push(d); return out; };
+const isLeave = (empId,d) => (MONTH.leaves[empId]||[]).includes(d);
+const allPairRules = () => [...DB.pairRules, ...MONTH.pairRules];
+const monthLabel = key => { const [y,m]=key.split('-').map(Number); return TH_MONTHS[m-1]+' '+(y+543); };
+const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const totalSlots = () => workDayList().length * MONTH.rooms.reduce((a,r)=>a+r.size,0);
+
+/* ============================================================
+   SOLVER
+   ============================================================ */
+
+// เช็คว่า emp ลงช่องนี้ได้ไหม (กฎ hard) — คืน null ถ้าได้, คืนเหตุผลถ้าไม่ได้
+function hardBlock(empId, d, room, assignedToday, roomMembers, prevWorked, shiftCount){
+  const e = empById(empId); if(!e) return 'ไม่พบพนักงาน';
+  if(e.active===false) return 'ปิดใช้งานอยู่';
+  if(isLeave(empId,d)) return 'ลา/ไม่อยู่วันนี้';
+  if(assignedToday.has(empId)) return 'มีเวรวันนี้แล้ว';
+
+  const cap = MONTH.caps[empId];
+  if(cap && shiftCount[empId] >= cap) return 'ครบโควตา '+cap+' เวร';
+
+  const pos = posById(e.positionId);
+  if(pos && pos.maxPerRoom){
+    const same = roomMembers.filter(x=>x && empById(x) && empById(x).positionId===e.positionId).length;
+    if(same >= pos.maxPerRoom) return pos.name+' เกิน '+pos.maxPerRoom+' คนในห้องนี้';
+  }
+  for(const r of allPairRules()){
+    if(r.kind!=='forbid') continue;
+    const other = r.a===empId ? r.b : (r.b===empId ? r.a : null);
+    if(!other) continue;
+    const scope = r.scope==='day' ? [...assignedToday] : roomMembers.filter(Boolean);
+    if(scope.includes(other)) return 'ห้ามอยู่กับ '+(empById(other)||{}).name + (r.scope==='day'?' (ทั้งวัน)':' (ห้องเดียวกัน)');
+  }
+  if(MONTH.soft.noB2B.on && MONTH.soft.noB2B.hard && prevWorked.has(empId)) return 'อยู่เวรวันทำการก่อนหน้า';
+  return null;
+}
+
+// คะแนน soft (ต่ำ = ดีกว่า)
+function softCost(empId, d, room, roomMembers, st){
+  const s = MONTH.soft; let c = 0;
+  if(s.even.on)   c += s.even.w * st.count[empId];
+  if(s.noB2B.on && !s.noB2B.hard && st.prevWorked.has(empId)) c += s.noB2B.w * 3;
+  if(s.spacing.on){
+    const last = st.lastDay[empId];
+    if(last!=null){
+      const gap = st.workIdx[d] - st.workIdx[last];
+      if(gap <= s.spacing.gap) c += s.spacing.w * (s.spacing.gap - gap + 1) * 2;
+    }
+  }
+  if(s.roomVar.on) c += s.roomVar.w * ((st.roomCount[empId]||{})[room.id]||0);
+  if(s.pairVar.on){
+    for(const o of roomMembers) if(o) c += s.pairVar.w * ((st.pairCount[empId]||{})[o]||0);
+  }
+  return c;
+}
+
+function newState(){
+  const st = {count:{},roomCount:{},pairCount:{},lastDay:{},prevWorked:new Set(),workIdx:{}};
+  workDayList().forEach((d,i)=> st.workIdx[d]=i);
+  DB.employees.forEach(e=>{ st.count[e.id]=0; st.roomCount[e.id]={}; st.pairCount[e.id]={}; });
+  return st;
+}
+function recordAssign(st, empId, d, room, roomMembers){
+  st.count[empId]++;
+  st.roomCount[empId][room.id] = (st.roomCount[empId][room.id]||0)+1;
+  for(const o of roomMembers){
+    if(!o || o===empId) continue;
+    st.pairCount[empId][o] = (st.pairCount[empId][o]||0)+1;
+    st.pairCount[o][empId] = (st.pairCount[o][empId]||0)+1;
+  }
+  st.lastDay[empId] = d;
+}
+
+// สร้างตาราง 1 รอบ (สุ่ม) — คืน {schedule, unfilled, st}
+function buildOnce(){
+  const st = newState();
+  const sched = {};
+  const unfilled = [];
+  const days = workDayList();
+  const pool = emps();
+
+  let prevWorked = new Set();
+  for(const d of days){
+    st.prevWorked = prevWorked;
+    const assignedToday = new Set();
+    sched[d] = {};
+
+    // นับ lock ของวันนี้ก่อน เพื่อไม่ให้ชนกัน
+    for(const room of MONTH.rooms){
+      sched[d][room.id] = new Array(room.size).fill(null);
+      for(let i=0;i<room.size;i++){
+        const lk = MONTH.locks[d+'|'+room.id+'|'+i];
+        if(lk && empById(lk)){ sched[d][room.id][i]=lk; assignedToday.add(lk); }
+      }
+    }
+    // ลงคะแนน lock
+    for(const room of MONTH.rooms){
+      const arr = sched[d][room.id];
+      arr.forEach(x=>{ if(x) recordAssign(st,x,d,room,arr.filter(y=>y&&y!==x)); });
+    }
+
+    // เรียงห้องแบบสุ่มเล็กน้อย เพื่อไม่ให้ห้องแรกได้เปรียบเสมอ
+    const rooms = [...MONTH.rooms].sort(()=>Math.random()-0.5);
+    for(const room of rooms){
+      const arr = sched[d][room.id];
+      for(let i=0;i<room.size;i++){
+        if(arr[i]) continue;
+        const members = arr.filter(Boolean);
+        const cands = [];
+        for(const e of pool){
+          const blk = hardBlock(e.id, d, room, assignedToday, members, prevWorked, st.count);
+          if(blk) continue;
+          cands.push({id:e.id, c:softCost(e.id,d,room,members,st) + Math.random()*0.9});
+        }
+        if(!cands.length){
+          unfilled.push({d, room:room.name, roomId:room.id, idx:i});
+          continue;
+        }
+        cands.sort((a,b)=>a.c-b.c);
+        // เลือกแบบสุ่มจากกลุ่มหัวตาราง → refresh แล้วได้ผลต่างแต่ยังดี
+        const k = Math.min(cands.length, 1 + Math.floor(Math.random()*3));
+        const pick = cands[Math.floor(Math.random()*k)];
+        arr[i] = pick.id;
+        assignedToday.add(pick.id);
+        recordAssign(st, pick.id, d, room, arr.filter(x=>x&&x!==pick.id));
+      }
+    }
+    prevWorked = assignedToday;
+  }
+  return {schedule:sched, unfilled, st};
+}
+
+// คะแนนรวมของทั้งตาราง (ต่ำ = ดี)
+function scoreSchedule(res){
+  let sc = res.unfilled.length * 100000;
+  const counts = emps().map(e=>res.st.count[e.id]||0);
+  if(counts.length){
+    const avg = counts.reduce((a,b)=>a+b,0)/counts.length;
+    const varr = counts.reduce((a,b)=>a+(b-avg)**2,0)/counts.length;
+    if(MONTH.soft.even.on) sc += varr * MONTH.soft.even.w * 40;
+    sc += (Math.max(...counts)-Math.min(...counts)) * (MONTH.soft.even.on ? MONTH.soft.even.w*15 : 2);
+  }
+  const v = validate(res.schedule);
+  sc += v.hard.length * 5000 + v.soft.length * 25;
+  return sc;
+}
+
+function generate(tries=220){
+  if(!emps().length){ alert('ยังไม่มีพนักงาน — เพิ่มรายชื่อในแท็บ "พนักงาน" ก่อน'); return; }
+  if(!workDayList().length){ alert('เดือนนี้ยังไม่ได้เลือกวันทำการเลย'); return; }
+  if(!MONTH.rooms.length){ alert('ยังไม่ได้ตั้งค่าห้อง'); return; }
+
+  let best=null, bestScore=Infinity;
+  for(let t=0;t<tries;t++){
+    const r = buildOnce();
+    const s = scoreSchedule(r);
+    if(s < bestScore){ bestScore = s; best = r; }
+    if(bestScore === 0) break;
+  }
+  best = polish(best);
+  MONTH.schedule = best.schedule;
+  MONTH.lastRun = {at:Date.now(), unfilled:best.unfilled.length, score:Math.round(scoreSchedule(best))};
+  save(); render();
+}
+
+// เกลี่ยเพิ่มด้วยการสลับคู่แบบสุ่ม เก็บเฉพาะที่ทำให้คะแนนดีขึ้น
+function polish(res, iters=900){
+  let cur = JSON.parse(JSON.stringify(res.schedule));
+  let curScore = scoreOf(cur);
+  const days = workDayList();
+  if(days.length<2) return {schedule:cur, unfilled:res.unfilled, st:recount(cur)};
+  for(let i=0;i<iters;i++){
+    const d1 = days[Math.floor(Math.random()*days.length)];
+    const d2 = days[Math.floor(Math.random()*days.length)];
+    const r1 = MONTH.rooms[Math.floor(Math.random()*MONTH.rooms.length)];
+    const r2 = MONTH.rooms[Math.floor(Math.random()*MONTH.rooms.length)];
+    const i1 = Math.floor(Math.random()*r1.size), i2 = Math.floor(Math.random()*r2.size);
+    if(d1===d2 && r1.id===r2.id && i1===i2) continue;
+    if(MONTH.locks[d1+'|'+r1.id+'|'+i1] || MONTH.locks[d2+'|'+r2.id+'|'+i2]) continue;
+    const a = cur[d1][r1.id][i1], b = cur[d2][r2.id][i2];
+    if(a===b) continue;
+    cur[d1][r1.id][i1]=b; cur[d2][r2.id][i2]=a;
+    const s = scoreOf(cur);
+    if(s <= curScore){ curScore = s; }
+    else { cur[d1][r1.id][i1]=a; cur[d2][r2.id][i2]=b; }
+  }
+  return {schedule:cur, unfilled:emptySlots(cur), st:recount(cur)};
+}
+function emptySlots(sched){
+  const out=[];
+  for(const d of workDayList()) for(const room of MONTH.rooms)
+    (sched[d]?.[room.id]||[]).forEach((x,i)=>{ if(!x) out.push({d,room:room.name,roomId:room.id,idx:i}); });
+  return out;
+}
+function recount(sched){
+  const st = newState();
+  for(const d of workDayList()) for(const room of MONTH.rooms){
+    const arr = sched[d]?.[room.id]||[];
+    arr.forEach(x=>{ if(x) recordAssign(st,x,d,room,arr.filter(y=>y&&y!==x)); });
+  }
+  return st;
+}
+function scoreOf(sched){
+  return scoreSchedule({schedule:sched, unfilled:emptySlots(sched), st:recount(sched)});
+}
+
+/* ============================================================
+   VALIDATION — ใช้ทั้งตอนตรวจผล และตอนที่ผู้ใช้โยกเอง
+   ============================================================ */
+function validate(sched){
+  const hard=[], soft=[];
+  if(!sched) return {hard,soft,byslot:{}};
+  const byslot = {};
+  const mark=(key,msg,lvl)=>{ (byslot[key]=byslot[key]||[]).push({msg,lvl}); };
+  const days = workDayList();
+  const count = {}; DB.employees.forEach(e=>count[e.id]=0);
+  let prevDay = null;
+
+  for(const d of days){
+    const todayMap = {};   // empId -> [ตำแหน่งช่อง]
+    for(const room of MONTH.rooms){
+      const arr = sched[d]?.[room.id]||[];
+      arr.forEach((x,i)=>{ if(x){ (todayMap[x]=todayMap[x]||[]).push({room,i}); count[x]++; } });
+    }
+    // ซ้ำวันเดียวกัน
+    for(const [eid,places] of Object.entries(todayMap)){
+      if(places.length>1){
+        places.forEach(p=>mark(d+'|'+p.room.id+'|'+p.i, 'ซ้ำ: อยู่ '+places.length+' ห้องในวันเดียว','hard'));
+        hard.push({d, msg:(empById(eid)||{}).name+' ถูกจัด '+places.length+' ห้องในวันที่ '+d});
+      }
+    }
+    // ลา
+    for(const [eid,places] of Object.entries(todayMap)){
+      if(isLeave(eid,d)){
+        places.forEach(p=>mark(d+'|'+p.room.id+'|'+p.i,'ลา/ไม่อยู่วันนี้','hard'));
+        hard.push({d, msg:(empById(eid)||{}).name+' ลาวันที่ '+d+' แต่ถูกจัดเวร'});
+      }
+    }
+    // กฎตำแหน่ง + คู่ห้าม (ในห้อง)
+    for(const room of MONTH.rooms){
+      const arr = (sched[d]?.[room.id]||[]).filter(Boolean);
+      const byPos = {};
+      arr.forEach(x=>{ const e=empById(x); if(e) byPos[e.positionId]=(byPos[e.positionId]||0)+1; });
+      for(const [pid,n] of Object.entries(byPos)){
+        const p = posById(pid);
+        if(p && p.maxPerRoom && n > p.maxPerRoom){
+          (sched[d][room.id]||[]).forEach((x,i)=>{
+            if(x && empById(x)?.positionId===pid) mark(d+'|'+room.id+'|'+i, p.name+' เกิน '+p.maxPerRoom+' คนในห้อง','hard');
+          });
+          hard.push({d, msg:'วันที่ '+d+' '+room.name+': '+p.name+' '+n+' คน (จำกัด '+p.maxPerRoom+')'});
+        }
+      }
+      for(const r of allPairRules()){
+        if(r.kind!=='forbid') continue;
+        const scopeSet = r.scope==='day' ? Object.keys(todayMap) : arr;
+        if(scopeSet.includes(r.a) && scopeSet.includes(r.b)){
+          if(r.scope==='room' || room.id===MONTH.rooms[0].id){
+            hard.push({d, msg:'วันที่ '+d+': '+(empById(r.a)||{}).name+' + '+(empById(r.b)||{}).name+' ห้ามอยู่ด้วยกัน'});
+          }
+          [r.a,r.b].forEach(x=>{
+            (sched[d][room.id]||[]).forEach((y,i)=>{ if(y===x) mark(d+'|'+room.id+'|'+i,'คู่ห้ามอยู่ด้วยกัน','hard'); });
+          });
+        }
+      }
+      // ช่องว่าง
+      (sched[d]?.[room.id]||[]).forEach((x,i)=>{
+        if(x) return;
+        mark(d+'|'+room.id+'|'+i,'ยังไม่มีคน','hard');
+        const free = emps().filter(e=>!isLeave(e.id,d)).length;
+        hard.push({d, msg:'วันที่ '+d+' '+room.name+' ช่อง '+(i+1)+': หาคนลงไม่ได้ (วันนั้นมีคนว่าง '+free+' คน ต้องการ '+MONTH.rooms.reduce((a,r)=>a+r.size,0)+' คน)'});
+      });
+    }
+    // ติดกัน
+    if(prevDay!=null && MONTH.soft.noB2B.on){
+      for(const eid of Object.keys(todayMap)){
+        const prevHas = MONTH.rooms.some(room => (sched[prevDay]?.[room.id]||[]).includes(eid));
+        if(prevHas){
+          todayMap[eid].forEach(p=>mark(d+'|'+p.room.id+'|'+p.i,'อยู่เวรวันทำการติดกัน', MONTH.soft.noB2B.hard?'hard':'soft'));
+          (MONTH.soft.noB2B.hard?hard:soft).push({d, msg:(empById(eid)||{}).name+' อยู่เวรวันที่ '+prevDay+' และ '+d+' ติดกัน'});
+        }
+      }
+    }
+    prevDay = d;
+  }
+  // โควตา
+  for(const [eid,cap] of Object.entries(MONTH.caps)){
+    if(cap && count[eid] > cap) hard.push({d:0, msg:(empById(eid)||{}).name+' ได้ '+count[eid]+' เวร เกินโควตา '+cap});
+  }
+  return {hard, soft, byslot, count};
+}
+
+/* ============================================================
+   UI
+   ============================================================ */
+const TABS = [
+  {id:'sched', label:'📋 ตารางเวร'},
+  {id:'month', label:'📅 ตั้งค่าเดือนนี้'},
+  {id:'cond',  label:'⚖️ เงื่อนไข'},
+  {id:'team',  label:'👥 พนักงาน & ตำแหน่ง'},
+];
+
+function render(){
+  document.getElementById('mLabel').textContent = monthLabel(DB.activeMonth);
+  document.getElementById('tabs').innerHTML = TABS.map(t=>
+    `<button class="${TAB===t.id?'on':''}" onclick="TAB='${t.id}';render()">${t.label}</button>`).join('');
+  const v = document.getElementById('view');
+  v.innerHTML = ({sched:viewSched, month:viewMonth, cond:viewCond, team:viewTeam})[TAB]();
+  if(TAB==='sched') wireSched();
+}
+
+/* ---------- แท็บ: พนักงาน & ตำแหน่ง ---------- */
+function viewTeam(){
+  const posRows = DB.positions.map(p=>`
+    <tr>
+      <td><span class="tag" style="background:${p.color}"></span></td>
+      <td><input value="${esc(p.name)}" onchange="setPos('${p.id}','name',this.value)" style="width:150px"></td>
+      <td><input type="color" value="${p.color}" onchange="setPos('${p.id}','color',this.value)" style="width:44px;padding:1px;height:28px"></td>
+      <td><input type="number" min="1" placeholder="ไม่จำกัด" value="${p.maxPerRoom??''}"
+            onchange="setPos('${p.id}','maxPerRoom',this.value?+this.value:null)"></td>
+      <td style="text-align:right"><button class="ghost danger" onclick="delPos('${p.id}')">ลบ</button></td>
+    </tr>`).join('');
+
+  const empRows = DB.employees.map(e=>`
+    <tr>
+      <td><input value="${esc(e.name)}" onchange="setEmp('${e.id}','name',this.value)" style="width:170px"></td>
+      <td><select onchange="setEmp('${e.id}','positionId',this.value)">
+        ${DB.positions.map(p=>`<option value="${p.id}" ${p.id===e.positionId?'selected':''}>${esc(p.name)}</option>`).join('')}
+      </select></td>
+      <td><label class="hint"><input type="checkbox" ${e.active!==false?'checked':''}
+            onchange="setEmp('${e.id}','active',this.checked)"> ใช้งาน</label></td>
+      <td style="text-align:right"><button class="ghost danger" onclick="delEmp('${e.id}')">ลบ</button></td>
+    </tr>`).join('') || '<tr><td colspan="4" class="empty">ยังไม่มีพนักงาน — กด “เพิ่มพนักงาน”</td></tr>';
+
+  return `
+  <div class="grid2">
+    <div class="card">
+      <div class="hdr"><h2>👥 พนักงาน</h2><span class="hint">${emps().length} คนที่ใช้งาน</span>
+        <div class="sp"></div>
+        <button class="ghost danger" onclick="resetAll()">ล้างข้อมูลตัวอย่าง</button>
+        <button class="primary" onclick="addEmp()">+ เพิ่มพนักงาน</button></div>
+      <div class="bd flush"><table>
+        <tr><th>ชื่อ</th><th>ตำแหน่ง</th><th></th><th></th></tr>${empRows}</table></div>
+      <div class="bd"><div class="note">ลบพนักงานจะลบเงื่อนไข/เวรของคนนั้นในทุกเดือนด้วย
+        ถ้าแค่ลาออกชั่วคราวให้ติ๊ก “ใช้งาน” ออกแทน — ประวัติเดือนเก่าจะยังอยู่ครบ</div></div>
+    </div>
+
+    <div class="card">
+      <div class="hdr"><h2>🏷️ ตำแหน่ง</h2><div class="sp"></div>
+        <button class="primary" onclick="addPos()">+ เพิ่มตำแหน่ง</button></div>
+      <div class="bd flush"><table>
+        <tr><th></th><th>ชื่อตำแหน่ง</th><th>สี</th><th>สูงสุด/ห้อง</th><th></th></tr>${posRows}</table></div>
+      <div class="bd"><div class="note"><b>สูงสุด/ห้อง</b> = กฎเหล็ก เช่นใส่ <b>1</b> ที่ Senior
+        แปลว่าห้องหนึ่งมี Senior ได้ไม่เกิน 1 คน · เว้นว่าง = ไม่จำกัด</div></div>
+    </div>
+  </div>`;
+}
+function resetAll(){
+  if(!confirm('ลบข้อมูลทั้งหมด (พนักงาน ตำแหน่ง เงื่อนไข และตารางทุกเดือน) แล้วเริ่มใหม่?\n\nแนะนำให้กด “สำรองข้อมูล” ก่อน')) return;
+  const keep = DB.activeMonth;
+  DB = blankDB(); DB.activeMonth = keep; ensureMonth(keep); MONTH = DB.months[keep];
+  save(); render();
+}
+function addEmp(){
+  if(!DB.positions.length){ alert('เพิ่มตำแหน่งก่อนอย่างน้อย 1 ตำแหน่ง'); return; }
+  DB.employees.push({id:uid(),name:'พนักงานใหม่',positionId:DB.positions[0].id,active:true});
+  save(); render();
+}
+function setEmp(id,k,v){ const e=empById(id); if(e){ e[k]=v; save(); if(k!=='name')render(); } }
+function delEmp(id){
+  const e = empById(id); if(!confirm('ลบ "'+e.name+'" ออกถาวร?')) return;
+  DB.employees = DB.employees.filter(x=>x.id!==id);
+  DB.pairRules = DB.pairRules.filter(r=>r.a!==id&&r.b!==id);
+  Object.values(DB.months).forEach(m=>{
+    delete m.leaves[id]; delete m.caps[id];
+    m.pairRules = m.pairRules.filter(r=>r.a!==id&&r.b!==id);
+    Object.keys(m.locks).forEach(k=>{ if(m.locks[k]===id) delete m.locks[k]; });
+    if(m.schedule) Object.values(m.schedule).forEach(day=>
+      Object.values(day).forEach(arr=>arr.forEach((x,i)=>{ if(x===id) arr[i]=null; })));
+  });
+  save(); render();
+}
+function addPos(){
+  DB.positions.push({id:uid(),name:'ตำแหน่งใหม่',color:PALETTE[DB.positions.length%PALETTE.length],maxPerRoom:null});
+  save(); render();
+}
+function setPos(id,k,v){ const p=posById(id); if(p){ p[k]=v; save(); if(k!=='name')render(); } }
+function delPos(id){
+  const used = DB.employees.filter(e=>e.positionId===id);
+  if(used.length){ alert('ยังมีพนักงาน '+used.length+' คนใช้ตำแหน่งนี้อยู่ — ย้ายตำแหน่งก่อน'); return; }
+  DB.positions = DB.positions.filter(p=>p.id!==id); save(); render();
+}
+
+/* ---------- แท็บ: ตั้งค่าเดือน ---------- */
+function viewMonth(){
+  const [y,m] = MONTH.key.split('-').map(Number);
+  const first = new Date(y,m-1,1).getDay();
+  let cells = TH_DOW.map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<first;i++) cells += '<div class="d blank"></div>';
+  for(let d=1; d<=daysInMonth(); d++){
+    const on = MONTH.workDays[d], we = [0,6].includes(dowOf(d));
+    cells += `<div class="d ${on?'on':'off'} ${we?'we':''}" onclick="toggleWork(${d})">${d}</div>`;
+  }
+  const roomRows = MONTH.rooms.map(r=>`
+    <tr>
+      <td><input value="${esc(r.name)}" onchange="setRoom('${r.id}','name',this.value)" style="width:150px"></td>
+      <td><input type="number" min="1" max="12" value="${r.size}" onchange="setRoom('${r.id}','size',Math.max(1,+this.value||1))"> คน</td>
+      <td style="text-align:right"><button class="ghost danger" onclick="delRoom('${r.id}')">ลบ</button></td>
+    </tr>`).join('') || '<tr><td colspan="3" class="empty">ยังไม่มีห้อง</td></tr>';
+
+  const nWork = workDayList().length, perDay = MONTH.rooms.reduce((a,r)=>a+r.size,0);
+  const need = nWork*perDay, have = emps().length;
+  const prevKey = (()=>{ const [yy,mm]=MONTH.key.split('-').map(Number); return monthKey(yy,mm-1); })();
+
+  return `
+  <div class="grid2">
+    <div class="card">
+      <div class="hdr"><h2>📅 วันทำการ — ${monthLabel(MONTH.key)}</h2><div class="sp"></div>
+        <button class="ghost" onclick="setAllWork(true)">เลือกทั้งหมด</button>
+        <button class="ghost" onclick="setAllWork(false)">ล้างทั้งหมด</button>
+        <button class="ghost" onclick="setWeekdaysOnly()">จ–ศ</button></div>
+      <div class="bd">
+        <div class="cal">${cells}</div>
+        <div class="note" style="margin-top:12px">คลิกวันเพื่อเปิด/ปิดการจัดเวร ·
+          ค่าเริ่มต้นคือ <b>จันทร์–ศุกร์</b> · <b>วันหยุดนักขัตฤกษ์ต้องคลิกปิดเอง</b>
+          (ระบบไม่ฝังปฏิทินวันหยุดไว้ เพราะแต่ละปีประกาศไม่เหมือนกัน)</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hdr"><h2>🚪 ห้องเวร (จำนวนคนไม่เท่ากันได้)</h2><div class="sp"></div>
+        <button class="primary" onclick="addRoom()">+ เพิ่มห้อง</button></div>
+      <div class="bd flush"><table><tr><th>ชื่อห้อง</th><th>ต้องการ</th><th></th></tr>${roomRows}</table></div>
+      <div class="bd">
+        <div class="stat" style="margin-bottom:12px">
+          <div><b>${nWork}</b><span>วันทำการ</span></div>
+          <div><b>${perDay}</b><span>คน/วัน (รวมทุกห้อง)</span></div>
+          <div><b>${need}</b><span>ช่องเวรทั้งเดือน</span></div>
+          <div><b>${have?(need/have).toFixed(1):'—'}</b><span>เวรเฉลี่ย/คน</span></div>
+        </div>
+        ${have && have < perDay ? `<div class="note" style="border-left-color:var(--bad)">
+          ⚠️ มีพนักงานใช้งานแค่ ${have} คน แต่วันหนึ่งต้องการ ${perDay} คน — จัดไม่ครบแน่นอน</div>`:''}
+        <div class="row" style="margin-top:12px">
+          <button onclick="copyFrom('${prevKey}')">📄 คัดลอกการตั้งค่าจาก ${monthLabel(prevKey)}</button>
+          <button onclick="saveAsDefaultRooms()">⭐ ตั้งห้องชุดนี้เป็นค่าเริ่มต้นของเดือนใหม่</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+function toggleWork(d){ MONTH.workDays[d] = !MONTH.workDays[d]; save(); render(); }
+function setAllWork(v){ for(let d=1;d<=daysInMonth();d++) MONTH.workDays[d]=v; save(); render(); }
+function setWeekdaysOnly(){ for(let d=1;d<=daysInMonth();d++) MONTH.workDays[d] = ![0,6].includes(dowOf(d)); save(); render(); }
+function addRoom(){ MONTH.rooms.push({id:uid(),name:'ห้อง '+(MONTH.rooms.length+1),size:1}); save(); render(); }
+function setRoom(id,k,v){ const r=MONTH.rooms.find(x=>x.id===id); if(r){ r[k]=v; save(); if(k!=='name')render(); } }
+function delRoom(id){
+  MONTH.rooms = MONTH.rooms.filter(r=>r.id!==id);
+  Object.keys(MONTH.locks).forEach(k=>{ if(k.split('|')[1]===id) delete MONTH.locks[k]; });
+  if(MONTH.schedule) Object.values(MONTH.schedule).forEach(day=>delete day[id]);
+  save(); render();
+}
+function saveAsDefaultRooms(){ DB.defaultRooms = MONTH.rooms.map(r=>({...r})); save(); alert('ตั้งเป็นค่าเริ่มต้นแล้ว'); }
+function copyFrom(key){
+  const src = DB.months[key];
+  if(!src){ alert('ไม่มีข้อมูลของ '+monthLabel(key)); return; }
+  if(!confirm('คัดลอก ห้อง + เงื่อนไข + กฎ จาก '+monthLabel(key)+' มาทับเดือนนี้?\n(วันลาและตารางเวรจะไม่ถูกคัดลอก)')) return;
+  MONTH.rooms = src.rooms.map(r=>({...r}));
+  MONTH.pairRules = src.pairRules.map(r=>({...r,id:uid()}));
+  MONTH.caps = {...src.caps};
+  MONTH.soft = JSON.parse(JSON.stringify(src.soft));
+  save(); render();
+}
+
+/* ---------- แท็บ: เงื่อนไข ---------- */
+function viewCond(){
+  const sel = DB.employees.map(e=>`<option value="${e.id}">${esc(e.name)} (${esc(posName(e.positionId))})</option>`).join('');
+  const leaveBlocks = emps().map(e=>{
+    const [y,m] = MONTH.key.split('-').map(Number);
+    const first = new Date(y,m-1,1).getDay();
+    let cells = TH_DOW.map(d=>`<div class="dow">${d}</div>`).join('');
+    for(let i=0;i<first;i++) cells += '<div class="d blank"></div>';
+    for(let d=1; d<=daysInMonth(); d++){
+      const lv = isLeave(e.id,d), wk = MONTH.workDays[d];
+      cells += `<div class="d ${lv?'leave':(wk?'on':'off')}" onclick="toggleLeave('${e.id}',${d})">${d}</div>`;
+    }
+    const n = (MONTH.leaves[e.id]||[]).filter(d=>MONTH.workDays[d]).length;
+    return `<div style="border:1px solid var(--line);border-radius:9px;padding:11px;background:#fff">
+      <div class="row" style="margin-bottom:8px">
+        <span class="tag" style="background:${posColor(e.positionId)}"></span>
+        <b>${esc(e.name)}</b><span class="hint">${esc(posName(e.positionId))}</span>
+        <div class="sp" style="flex:1"></div>
+        <span class="pill" style="background:${n?'var(--bad-soft)':'#f2f4f6'};color:${n?'#9b1c1c':'var(--muted)'}">ลา ${n} วันทำการ</span>
+        ${n?`<button class="ghost" onclick="clearLeave('${e.id}')">ล้าง</button>`:''}
+      </div>
+      <div class="cal" style="max-width:100%">${cells}</div>
+      <div class="row" style="margin-top:8px">
+        <span class="hint">เวรสูงสุดเดือนนี้</span>
+        <input type="number" min="0" placeholder="ไม่จำกัด" value="${MONTH.caps[e.id]??''}"
+          onchange="setCap('${e.id}',this.value)">
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty">ยังไม่มีพนักงาน</div>';
+
+  const ruleRow = (r,where) => `
+    <tr>
+      <td>${esc((empById(r.a)||{}).name||'?')} <span class="hint">✕</span> ${esc((empById(r.b)||{}).name||'?')}</td>
+      <td><select onchange="setRuleScope('${where}','${r.id}',this.value)">
+        <option value="room" ${r.scope==='room'?'selected':''}>ห้องเดียวกัน</option>
+        <option value="day" ${r.scope==='day'?'selected':''}>วันเดียวกัน</option></select></td>
+      <td style="text-align:right"><button class="ghost danger" onclick="delRule('${where}','${r.id}')">ลบ</button></td>
+    </tr>`;
+  const gRules = DB.pairRules.map(r=>ruleRow(r,'global')).join('')
+    || '<tr><td colspan="3" class="empty">ยังไม่มีกฎยืนพื้น</td></tr>';
+  const mRules = MONTH.pairRules.map(r=>ruleRow(r,'month')).join('')
+    || '<tr><td colspan="3" class="empty">เดือนนี้ไม่มีกฎเพิ่ม</td></tr>';
+
+  const s = MONTH.soft;
+  const softRow = (key,label,desc,extra='') => `
+    <div style="padding:10px 0;border-bottom:1px solid var(--line)">
+      <div class="row">
+        <label style="flex:1"><input type="checkbox" ${s[key].on?'checked':''}
+          onchange="setSoft('${key}','on',this.checked)"> <b>${label}</b></label>
+        ${extra}
+        <span class="hint">น้ำหนัก</span>
+        <input type="range" min="1" max="10" value="${s[key].w}" style="width:110px"
+          oninput="setSoft('${key}','w',+this.value,true)" onchange="setSoft('${key}','w',+this.value)">
+        <b style="width:16px;text-align:right">${s[key].w}</b>
+      </div>
+      <div class="hint" style="margin-left:22px">${desc}</div>
+    </div>`;
+
+  return `
+  <div class="card">
+    <div class="hdr"><h2>🚫 คู่ที่ห้ามอยู่ด้วยกัน</h2><div class="sp"></div>
+      <select id="pa">${sel}</select><span class="hint">✕</span><select id="pb">${sel}</select>
+      <select id="pscope"><option value="room">ห้องเดียวกัน</option><option value="day">วันเดียวกัน</option></select>
+      <button onclick="addRule('global')">+ กฎยืนพื้น</button>
+      <button onclick="addRule('month')">+ เฉพาะเดือนนี้</button></div>
+    <div class="bd grid2" style="display:grid">
+      <div><div class="hint" style="margin-bottom:6px"><b>กฎยืนพื้น</b> — ใช้ทุกเดือน</div>
+        <table>${gRules}</table></div>
+      <div><div class="hint" style="margin-bottom:6px"><b>เฉพาะ ${monthLabel(MONTH.key)}</b></div>
+        <table>${mRules}</table></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hdr"><h2>⚙️ กฎความยุติธรรม (ปรับได้ตามใจ)</h2>
+      <span class="hint">เปิดเฉพาะข้อที่ต้องการ · น้ำหนักสูง = ระบบให้ความสำคัญมาก</span></div>
+    <div class="bd">
+      ${softRow('even','เกลี่ยจำนวนเวรให้เท่ากัน','ทุกคนได้จำนวนเวรใกล้เคียงกันตลอดเดือน')}
+      ${softRow('noB2B','ไม่ให้อยู่เวรวันทำการติดกัน','เว้นอย่างน้อย 1 วันทำการระหว่างเวร',
+        `<label class="hint"><input type="checkbox" ${s.noB2B.hard?'checked':''}
+          onchange="setSoft('noB2B','hard',this.checked)"> ห้ามเด็ดขาด</label>`)}
+      ${softRow('spacing','เว้นระยะห่างระหว่างเวร','ไม่ให้เวรกระจุกในช่วงเดียวกันของเดือน',
+        `<span class="hint">เว้น ≥</span><input type="number" min="1" max="10" value="${s.spacing.gap}"
+          style="width:56px" onchange="setSoft('spacing','gap',+this.value||1)"><span class="hint">วันทำการ</span>`)}
+      ${softRow('roomVar','หมุนเวียนห้อง','ไม่ให้ใครอยู่ห้องเดิมซ้ำ ๆ ทั้งเดือน')}
+      ${softRow('pairVar','หมุนเวียนคู่','ไม่ให้คู่เดิมเจอกันบ่อยเกินไป')}
+      <div class="note" style="margin-top:12px">กฎเหล่านี้เป็น <b>soft</b> — ระบบจะพยายามให้ดีที่สุด
+        แต่ถ้าขัดกับเงื่อนไขตายตัว (วันลา/คู่ห้าม/กฎตำแหน่ง) เงื่อนไขตายตัวชนะเสมอ</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hdr"><h2>🌴 วันลา / วันไม่อยู่ — ${monthLabel(MONTH.key)}</h2>
+      <span class="hint">คลิกวันที่เพื่อทำเครื่องหมายลา</span></div>
+    <div class="bd" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+      ${leaveBlocks}
+    </div>
+  </div>`;
+}
+function toggleLeave(eid,d){
+  const arr = MONTH.leaves[eid] = MONTH.leaves[eid]||[];
+  const i = arr.indexOf(d);
+  if(i>=0) arr.splice(i,1); else arr.push(d);
+  save(); render();
+}
+function clearLeave(eid){ delete MONTH.leaves[eid]; save(); render(); }
+function setCap(eid,v){ if(v==='') delete MONTH.caps[eid]; else MONTH.caps[eid]=+v; save(); }
+function addRule(where){
+  const a = document.getElementById('pa').value, b = document.getElementById('pb').value;
+  const scope = document.getElementById('pscope').value;
+  if(!a||!b||a===b){ alert('เลือกคนสองคนที่ต่างกัน'); return; }
+  const list = where==='global' ? DB.pairRules : MONTH.pairRules;
+  if(list.some(r=>(r.a===a&&r.b===b)||(r.a===b&&r.b===a))){ alert('มีกฎคู่นี้อยู่แล้ว'); return; }
+  list.push({id:uid(),a,b,scope,kind:'forbid'});
+  save(); render();
+}
+function delRule(where,id){
+  if(where==='global') DB.pairRules = DB.pairRules.filter(r=>r.id!==id);
+  else MONTH.pairRules = MONTH.pairRules.filter(r=>r.id!==id);
+  save(); render();
+}
+function setRuleScope(where,id,v){
+  const list = where==='global'?DB.pairRules:MONTH.pairRules;
+  const r = list.find(x=>x.id===id); if(r){ r.scope=v; save(); }
+}
+function setSoft(k,f,v,quiet){ MONTH.soft[k][f]=v; save(); if(!quiet) render(); }
+
+/* ---------- แท็บ: ตารางเวร ---------- */
+function viewSched(){
+  const days = workDayList();
+  const v = validate(MONTH.schedule);
+  const st = MONTH.schedule ? recount(MONTH.schedule) : null;
+
+  const head = `<tr><th>วันที่</th>${MONTH.rooms.map(r=>
+    `<th>${esc(r.name)} <span class="hint">(${r.size})</span></th>`).join('')}</tr>`;
+
+  const body = days.map(d=>{
+    const we = [0,6].includes(dowOf(d));
+    const cells = MONTH.rooms.map(room=>{
+      const arr = MONTH.schedule?.[d]?.[room.id] || new Array(room.size).fill(null);
+      const slots = [];
+      for(let i=0;i<room.size;i++){
+        const key = d+'|'+room.id+'|'+i;
+        const eid = arr[i];
+        const msgs = v.byslot[key]||[];
+        const lvl = msgs.some(m=>m.lvl==='hard') ? 'bad' : (msgs.length?'warn':'');
+        const locked = !!MONTH.locks[key];
+        const e = eid?empById(eid):null;
+        slots.push(e
+          ? `<div class="slot ${lvl} ${locked?'locked':''}" draggable="true" data-key="${key}"
+               title="${esc(msgs.map(m=>m.msg).join(' · '))}">
+               <span class="tag" style="background:${posColor(e.positionId)}"></span>
+               <span class="nm">${esc(e.name)}</span>
+               <span class="lk" onclick="event.stopPropagation();toggleLock('${key}')">${locked?'🔒':'🔓'}</span>
+             </div>`
+          : `<div class="slot empty ${lvl}" draggable="true" data-key="${key}">+ ว่าง</div>`);
+      }
+      return `<td><div class="slotbox">${slots.join('')}</div></td>`;
+    }).join('');
+    return `<tr class="${we?'we':''}"><td class="day"><b>${d}</b>${TH_DOW[dowOf(d)]}.</td>${cells}</tr>`;
+  }).join('');
+
+  const counts = emps().map(e=>({e, n:(st?.count[e.id])||0, lv:(MONTH.leaves[e.id]||[]).filter(x=>MONTH.workDays[x]).length}))
+                       .sort((a,b)=>b.n-a.n);
+  const maxN = Math.max(1, ...counts.map(c=>c.n));
+  const summary = counts.map(c=>`
+    <tr><td><span class="tag" style="background:${posColor(c.e.positionId)}"></span> ${esc(c.e.name)}</td>
+      <td class="hint">${esc(posName(c.e.positionId))}</td>
+      <td><div class="bar"><i style="width:${c.n/maxN*100}%"></i></div></td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums"><b>${c.n}</b> เวร</td>
+      <td style="text-align:right" class="hint">${c.lv?('ลา '+c.lv):''}</td></tr>`).join('')
+    || '<tr><td class="empty">—</td></tr>';
+
+  const vioList = [...v.hard.map(x=>({...x,lvl:'hard'})), ...v.soft.map(x=>({...x,lvl:'soft'}))]
+    .slice(0,60).map(x=>`<div class="vio ${x.lvl==='soft'?'soft':''}">
+      <b>${x.lvl==='hard'?'ผิดกฎ':'ไม่เหมาะ'}</b> · ${esc(x.msg)}</div>`).join('')
+    || '<div class="hint" style="padding:8px 0">✅ ไม่มีข้อขัดแย้ง</div>';
+
+  const lockN = Object.keys(MONTH.locks).length;
+  const nl = MONTH.lastRun;
+
+  return `
+  <div class="card noprint">
+    <div class="hdr">
+      <h2>📋 ${monthLabel(MONTH.key)}</h2>
+      <span class="hint">${days.length} วันทำการ · ${MONTH.rooms.length} ห้อง · ${totalSlots()} ช่องเวร</span>
+      <div class="sp"></div>
+      ${lockN?`<span class="pill" style="background:var(--brand-soft);color:#1f4f4c">🔒 ล็อก ${lockN} ช่อง</span>
+        <button class="ghost" onclick="clearLocks()">ปลดล็อกทั้งหมด</button>`:''}
+      <button onclick="window.print()">🖨️ พิมพ์</button>
+      <button onclick="exportCSV()">⤓ Excel/CSV</button>
+      <button class="primary" onclick="generate()">${MONTH.schedule?'🎲 สุ่มใหม่':'⚡ จัดตารางเวร'}</button>
+    </div>
+    ${!MONTH.schedule?'':`<div class="bd" style="padding-top:10px;padding-bottom:10px">
+      <div class="row">
+        ${v.hard.length
+          ? `<span class="pill" style="background:var(--bad-soft);color:#9b1c1c">⚠️ ผิดกฎ ${v.hard.length} จุด</span>`
+          : `<span class="pill" style="background:var(--ok-soft);color:#166534">✅ ผ่านเงื่อนไขตายตัวครบ</span>`}
+        ${v.soft.length?`<span class="pill" style="background:var(--warn-soft);color:#92400e">${v.soft.length} จุดไม่เหมาะ</span>`:''}
+        <span class="hint">${nl?('จัดเมื่อ '+new Date(nl.at).toLocaleString('th-TH')):''}</span>
+      </div></div>`}
+  </div>
+
+  ${!MONTH.schedule ? `<div class="card"><div class="empty">
+      ยังไม่มีตารางของเดือนนี้ — กด <b>⚡ จัดตารางเวร</b> ด้านบน<br>
+      <span class="hint">ระบบจะลองจัดกว่า 200 แบบแล้วเลือกอันที่ดีที่สุด</span></div></div>`
+  : `<div class="card"><div class="bd flush">
+      <table class="sched">${head}${body}</table></div>
+     <div class="bd hint noprint">💡 <b>คลิกช่อง</b> = เปลี่ยนคน · <b>ลากสลับ</b> ระหว่างช่องได้ ·
+        <b>🔒</b> ล็อกช่องที่พอใจแล้วค่อยกดสุ่มใหม่ ระบบจะสุ่มเฉพาะช่องที่เหลือ</div></div>
+
+    <div class="grid2">
+      <div class="card"><div class="hdr"><h2>📊 จำนวนเวรรายคน</h2></div>
+        <div class="bd flush"><table>${summary}</table></div></div>
+      <div class="card"><div class="hdr"><h2>🔍 รายการที่ควรดู</h2></div>
+        <div class="bd" style="max-height:420px;overflow:auto">${vioList}</div></div>
+    </div>`}`;
+}
+
+function toggleLock(key){
+  if(MONTH.locks[key]) delete MONTH.locks[key];
+  else {
+    const [d,rid,i] = key.split('|');
+    const eid = MONTH.schedule?.[d]?.[rid]?.[+i];
+    if(!eid) return;
+    MONTH.locks[key] = eid;
+  }
+  save(); render();
+}
+function clearLocks(){ MONTH.locks = {}; save(); render(); }
+
+/* drag & drop + click-to-assign */
+let dragKey = null;
+function wireSched(){
+  document.querySelectorAll('.slot').forEach(el=>{
+    el.addEventListener('click', ()=>openPicker(el.dataset.key));
+    el.addEventListener('dragstart', e=>{ dragKey = el.dataset.key; el.classList.add('drag'); });
+    el.addEventListener('dragend', ()=>{ el.classList.remove('drag'); document.querySelectorAll('.over').forEach(x=>x.classList.remove('over')); });
+    el.addEventListener('dragover', e=>{ e.preventDefault(); el.classList.add('over'); });
+    el.addEventListener('dragleave', ()=>el.classList.remove('over'));
+    el.addEventListener('drop', e=>{ e.preventDefault(); swapSlots(dragKey, el.dataset.key); });
+  });
+}
+function readSlot(key){ const [d,r,i]=key.split('|'); return MONTH.schedule?.[d]?.[r]?.[+i] ?? null; }
+function writeSlot(key,val){ const [d,r,i]=key.split('|'); if(MONTH.schedule?.[d]?.[r]) MONTH.schedule[d][r][+i]=val; }
+function swapSlots(k1,k2){
+  if(!k1||!k2||k1===k2) return;
+  const a = readSlot(k1), b = readSlot(k2);
+  writeSlot(k1,b); writeSlot(k2,a);
+  if(MONTH.locks[k1]) MONTH.locks[k1] = b || undefined;
+  if(MONTH.locks[k2]) MONTH.locks[k2] = a || undefined;
+  Object.keys(MONTH.locks).forEach(k=>{ if(!MONTH.locks[k]) delete MONTH.locks[k]; });
+  save(); render();
+}
+
+function openPicker(key){
+  const [d,rid,idx] = key.split('|');
+  const room = MONTH.rooms.find(r=>r.id===rid);
+  const cur = readSlot(key);
+  const arr = MONTH.schedule?.[d]?.[rid] || [];
+  const members = arr.filter((x,i)=>x && i!==+idx);
+  const assignedToday = new Set();
+  MONTH.rooms.forEach(r=>(MONTH.schedule?.[d]?.[r.id]||[]).forEach((x,i)=>{
+    if(x && !(r.id===rid && i===+idx)) assignedToday.add(x); }));
+  const prevList = workDayList(); const pi = prevList.indexOf(+d);
+  const prevWorked = new Set();
+  if(pi>0){ const pd = prevList[pi-1]; MONTH.rooms.forEach(r=>(MONTH.schedule?.[pd]?.[r.id]||[]).forEach(x=>x&&prevWorked.add(x))); }
+  const st = recount(MONTH.schedule);
+
+  const opts = emps().map(e=>{
+    const blk = hardBlock(e.id,+d,room,assignedToday,members,prevWorked,st.count);
+    return {e, blk, n:st.count[e.id]||0};
+  }).sort((a,b)=> (a.blk?1:0)-(b.blk?1:0) || a.n-b.n);
+
+  const html = `
+   <div class="mask" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div class="mh"><h3>วันที่ ${d} · ${esc(room.name)} · ช่อง ${+idx+1}</h3>
+        <button class="ghost" onclick="closeModal()">✕</button></div>
+      <div class="mb">
+        <div class="opt ${!cur?'cur':''}" onclick="assign('${key}',null)">
+          <span class="nm" style="flex:1;color:var(--muted)">— ปล่อยว่าง —</span></div>
+        ${opts.map(o=>`
+          <div class="opt ${o.e.id===cur?'cur':''} ${o.blk?'blocked':''}" onclick="assign('${key}','${o.e.id}')">
+            <span class="tag" style="background:${posColor(o.e.positionId)}"></span>
+            <span class="nm" style="flex:1">${esc(o.e.name)}
+              <span class="hint">${esc(posName(o.e.positionId))}</span></span>
+            ${o.blk?`<span class="why">⚠ ${esc(o.blk)}</span>`:`<span class="cnt">${o.n} เวร</span>`}
+          </div>`).join('')}
+      </div>
+      <div class="mh" style="border-top:1px solid var(--line);border-bottom:0">
+        <span class="hint">เลือกคนที่มี ⚠ ได้ ระบบจะทำเครื่องหมายไว้ให้ ไม่บังคับห้าม</span></div>
+    </div></div>`;
+  document.getElementById('modalHost').innerHTML = html;
+}
+function closeModal(){ document.getElementById('modalHost').innerHTML=''; }
+function assign(key, eid){
+  if(!MONTH.schedule){ closeModal(); return; }
+  const [d,rid] = key.split('|');
+  if(!MONTH.schedule[d]) MONTH.schedule[d]={};
+  if(!MONTH.schedule[d][rid]) MONTH.schedule[d][rid]=new Array(MONTH.rooms.find(r=>r.id===rid).size).fill(null);
+  writeSlot(key, eid);
+  if(MONTH.locks[key]) MONTH.locks[key] = eid || undefined;
+  if(!MONTH.locks[key]) delete MONTH.locks[key];
+  closeModal(); save(); render();
+}
+
+/* ---------- export / backup ---------- */
+function download(name, text, mime){
+  const blob = new Blob(['﻿'+text], {type:mime||'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+}
+function exportCSV(){
+  if(!MONTH.schedule){ alert('ยังไม่มีตาราง'); return; }
+  const rows = [];
+  const header = ['วันที่','วัน'];
+  MONTH.rooms.forEach(r=>{ for(let i=0;i<r.size;i++) header.push(r.name+' #'+(i+1)); });
+  rows.push(header);
+  for(const d of workDayList()){
+    const row = [d, TH_DOW[dowOf(d)]];
+    MONTH.rooms.forEach(r=>{
+      const arr = MONTH.schedule[d]?.[r.id]||[];
+      for(let i=0;i<r.size;i++){ const e = arr[i]?empById(arr[i]):null; row.push(e?e.name:''); }
+    });
+    rows.push(row);
+  }
+  rows.push([]);
+  rows.push(['สรุปจำนวนเวร']);
+  const st = recount(MONTH.schedule);
+  emps().forEach(e=>rows.push([e.name, posName(e.positionId), st.count[e.id]||0]));
+  const csv = rows.map(r=>r.map(c=>{
+    const s = String(c??''); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  }).join(',')).join('\n');
+  download('ตารางเวร_'+MONTH.key+'.csv', csv, 'text/csv;charset=utf-8');
+}
+function backup(){ download('duty-roster-backup-'+new Date().toISOString().slice(0,10)+'.json', JSON.stringify(DB,null,1), 'application/json'); }
+function restore(input){
+  const f = input.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try{
+      const obj = JSON.parse(rd.result);
+      if(!obj.employees || !obj.months) throw new Error('รูปแบบไฟล์ไม่ถูกต้อง');
+      if(!confirm('กู้คืนข้อมูลทับของเดิมทั้งหมด?')) return;
+      DB = obj; ensureMonth(DB.activeMonth); MONTH = DB.months[DB.activeMonth];
+      save(); render();
+    }catch(e){ alert('อ่านไฟล์ไม่ได้: '+e.message); }
+  };
+  rd.readAsText(f); input.value='';
+}
+
+/* ---------- demo seed (ครั้งแรกเท่านั้น) ---------- */
+function seedDemo(){
+  if(DB.employees.length) return;
+  const S = DB.positions[0].id, J = DB.positions[1].id;
+  [['พี่เอ',S],['พี่บี',S],['พี่ซี',S],['พี่ดี',S],
+   ['น้องอี',J],['น้องเอฟ',J],['น้องจี',J],['น้องเอช',J],['น้องไอ',J],['น้องเจ',J]]
+   .forEach(([n,p])=>DB.employees.push({id:uid(),name:n,positionId:p,active:true}));
+  DB.pairRules.push({id:uid(),a:DB.employees[0].id,b:DB.employees[1].id,scope:'room',kind:'forbid'});
+  MONTH.leaves[DB.employees[4].id] = [5,6,7];
+  save();
+}
+
+load();
+seedDemo();
+render();
+</script>
+</body>
+</html>
